@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { DndContext, closestCenter, useDraggable, useDroppable } from '@dnd-kit/core';
 // import ReactMarkdown from 'react-markdown';
 
 const STATUSES = ['Backlog', 'Filling', 'Doing', 'Done', 'Frozen'];
@@ -43,6 +44,45 @@ function getPrioritySelectBg(priority: string) {
   return 'bg-gray-900 text-white';
 }
 
+function DraggableTask({ id, children, onClick }: { id: string; children: React.ReactNode; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
+  const [hovered, setHovered] = React.useState(false);
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        opacity: isDragging ? 0.5 : 1,
+        transition: 'transform 0.2s cubic-bezier(.22,1,.36,1)',
+        zIndex: isDragging ? 100 : undefined,
+        cursor: isDragging ? 'grabbing' : hovered ? 'grab' : 'default',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      {...attributes}
+      {...listeners}
+      className="bg-black rounded-full px-4 py-2 select-none shadow-sm text-white text-base font-medium"
+      onClick={onClick}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DroppableColumn({ id, children, onDrop }: { id: string; children: React.ReactNode; onDrop: () => void }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ background: isOver ? 'rgba(59,130,246,0.08)' : undefined, transition: 'background 0.2s' }}
+      onDrop={onDrop}
+      className="flex flex-col min-h-[400px] w-full max-w-xs px-2"
+    >
+      {children}
+    </div>
+  );
+}
+
 function App() {
   const [columns, setColumns] = useState(initialColumns);
   const [newTask, setNewTask] = useState<{ [key: string]: string }>({});
@@ -53,6 +93,7 @@ function App() {
   const assigneesButtonRef = useRef<HTMLButtonElement>(null);
   const [fieldErrors, setFieldErrors] = useState<{[key:string]: boolean}>({});
   const [formError, setFormError] = useState<string>('');
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   // Закрытие выпадающего списка при клике вне
   useEffect(() => {
@@ -155,59 +196,69 @@ function App() {
     closeModal();
   };
 
+  // dnd-kit обработчик
+  function handleDragEnd(event: any) {
+    const { active, over } = event;
+    if (!active || !over) return;
+    const [fromCol, fromTask] = active.id.split(':').map(Number);
+    const toCol = Number(over.id);
+    if (fromCol === toCol) return;
+    const updated = [...columns];
+    const [task] = updated[fromCol].tasks.splice(fromTask, 1);
+    task.status = columns[toCol].name;
+    updated[toCol].tasks.push(task);
+    setColumns(updated);
+    setActiveId(null);
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
       <header className="py-8 text-center">
         <h1 className="text-5xl font-bold tracking-wide mb-2">AI Department Task Manager</h1>
       </header>
       <main className="flex-1 flex justify-center items-start px-4 pb-8">
-        <div className="w-full max-w-7xl flex gap-8">
-          {columns.map((col, colIdx) => (
-            <div
-              key={col.name}
-              className="flex flex-col min-h-[400px] w-full max-w-xs px-2"
-              onDragOver={e => e.preventDefault()}
-              onDrop={() => handleDrop(colIdx)}
-            >
-              <h2 className="text-xl font-semibold mb-6 text-center">
-                <span className={`inline-block ${getStatusBg(col.name)} text-white px-6 py-2 rounded-full shadow-sm`}>
-                  {col.name}
-                </span>
-              </h2>
-              <div className="flex flex-col gap-2 flex-1">
-                {col.tasks.map((task, taskIdx) => (
-                  <div
-                    key={taskIdx}
-                    className="bg-black rounded-full px-4 py-2 cursor-move select-none shadow-sm text-white text-base font-medium"
-                    draggable
-                    onDragStart={() => handleDragStart(colIdx, taskIdx)}
-                    onClick={() => openModal(colIdx, taskIdx)}
-                  >
-                    {task.title}
+        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <div className="w-full max-w-7xl flex gap-8">
+            {columns.map((col, colIdx) => (
+              <DroppableColumn key={col.name} id={String(colIdx)} onDrop={() => {}}>
+                <h2 className="text-xl font-semibold mb-6 text-center">
+                  <span className={`inline-block ${getStatusBg(col.name)} text-white px-6 py-2 rounded-full shadow-sm`}>
+                    {col.name}
+                  </span>
+                </h2>
+                <div className="flex flex-col gap-2">
+                  {col.tasks.map((task, taskIdx) => (
+                    <DraggableTask
+                      key={taskIdx}
+                      id={`${colIdx}:${taskIdx}`}
+                      onClick={() => openModal(colIdx, taskIdx)}
+                    >
+                      {task.title}
+                    </DraggableTask>
+                  ))}
+                  <div className="mt-2 flex flex-col items-center justify-start">
+                    <div className="flex gap-2 mt-0 justify-center w-[180px]">
+                      <input
+                        className="rounded-full px-3 py-2 bg-gray-900 border border-gray-700 text-gray-100 focus:outline-none min-w-[120px] max-w-[140px]"
+                        type="text"
+                        value={newTask[colIdx] || ''}
+                        onChange={e => setNewTask({ ...newTask, [colIdx]: e.target.value })}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddTask(colIdx); }}
+                        placeholder="New task..."
+                      />
+                      <button
+                        className="px-4 py-2 bg-blue-700 hover:bg-blue-800 rounded-full text-white font-medium"
+                        onClick={() => handleAddTask(colIdx)}
+                      >
+                        Add
+                      </button>
+                    </div>
                   </div>
-                ))}
-              </div>
-              <div className="mt-4 min-h-[56px] flex flex-col items-center justify-start">
-                <div className="flex gap-2 mt-0 justify-center w-[180px]">
-                  <input
-                    className="rounded-full px-3 py-2 bg-gray-900 border border-gray-700 text-gray-100 focus:outline-none min-w-[120px] max-w-[140px]"
-                    type="text"
-                    value={newTask[colIdx] || ''}
-                    onChange={e => setNewTask({ ...newTask, [colIdx]: e.target.value })}
-                    onKeyDown={e => { if (e.key === 'Enter') handleAddTask(colIdx); }}
-                    placeholder="New task..."
-                  />
-                  <button
-                    className="px-4 py-2 bg-blue-700 hover:bg-blue-800 rounded-full text-white font-medium"
-                    onClick={() => handleAddTask(colIdx)}
-                  >
-                    Add
-                  </button>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              </DroppableColumn>
+            ))}
+          </div>
+        </DndContext>
         {/* Modal */}
         {modal && editTask && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">

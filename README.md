@@ -36,44 +36,6 @@ It is a modern React web app (using TypeScript and TailwindCSS) for managing tas
 
 ---
 
-**РУССКИЙ**
-
-Твой проект находится в папке `rh-task-manager`.  
-Это современное React-приложение (TypeScript + TailwindCSS) для управления задачами в стиле доски Notion.
-
-### Структура проекта
-- **src/** — исходный код (React-компоненты, логика, стили)
-- **public/** — статические файлы (index.html, иконки и т.д.)
-- **package.json** — зависимости и скрипты
-- **tailwind.config.js, postcss.config.js** — настройки TailwindCSS
-- **node_modules/** — установленные зависимости
-
-### Как запустить проект
-
-1. **Открой терминал и перейди в папку проекта:**
-   ```sh
-   cd rh-task-manager
-   ```
-
-2. **Установи зависимости:**
-   ```sh
-   npm install
-   ```
-
-3. **Запусти сервер разработки:**
-   ```sh
-   npm start
-   ```
-   Приложение откроется в браузере (обычно http://localhost:3000).
-
-4. **Собрать проект для продакшена (опционально):**
-   ```sh
-   npm run build
-   ```
-   Будет создана папка `build/` с оптимизированными файлами.
-
----
-
 **УКРАЇНСЬКА**
 
 Твій проєкт знаходиться у папці `rh-task-manager`.  
@@ -111,6 +73,3 @@ It is a modern React web app (using TypeScript and TailwindCSS) for managing tas
    З’явиться папка `build/` з оптимізованими файлами.
 
 ---
-
-Если нужно — могу объяснить подробнее или помочь с запуском!  
-Let me know if you need more details or run into issues.
