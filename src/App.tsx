@@ -158,7 +158,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
       <header className="py-8 text-center">
-        <h1 className="text-5xl font-bold tracking-wide mb-2">AI DepartmentTask Manager</h1>
+        <h1 className="text-5xl font-bold tracking-wide mb-2">AI Department Task Manager</h1>
       </header>
       <main className="flex-1 flex justify-center items-start px-4 pb-8">
         <div className="w-full max-w-7xl flex gap-8">
